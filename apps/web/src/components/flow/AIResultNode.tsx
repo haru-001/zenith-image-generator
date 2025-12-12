@@ -1,127 +1,153 @@
-import { memo, useEffect, useState, useRef } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Sparkles, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { decryptFromStore } from "@/lib/crypto";
+import { memo, useEffect, useState, useRef } from 'react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { Sparkles, Download, Trash2, Eye, EyeOff } from 'lucide-react'
+import { loadAllTokens } from '@/lib/crypto'
+import { loadSettings, type ProviderType } from '@/lib/constants'
 
-import type { GeneratedImage } from "@/lib/flow-storage";
+import type { GeneratedImage } from '@/lib/flow-storage'
 
 export type AIResultNodeData = {
-  prompt: string;
-  width: number;
-  height: number;
-  aspectRatio: string;
-  model: string;
-  seed?: number;
-  imageUrl?: string; // Pre-loaded image URL (for restored nodes)
-  duration?: number; // Generation time (for restored nodes)
-  onImageGenerated?: (nodeId: string, image: GeneratedImage) => void;
-  onDelete?: (id: string) => void;
-};
-
-async function generateImage(
-  prompt: string,
-  apiKey: string,
-  width: number,
+  prompt: string
+  width: number
   height: number
+  aspectRatio: string
+  model: string
+  seed?: number
+  imageUrl?: string // Pre-loaded image URL (for restored nodes)
+  duration?: number // Generation time (for restored nodes)
+  onImageGenerated?: (nodeId: string, image: GeneratedImage) => void
+  onDelete?: (id: string) => void
+}
+
+async function generateImageApi(
+  prompt: string,
+  width: number,
+  height: number,
+  provider: ProviderType,
+  token: string,
+  model: string,
+  seed?: number
 ): Promise<string> {
-  const res = await fetch(
-    `${import.meta.env.VITE_API_URL || ""}/api/generate`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify({
-        prompt,
-        negative_prompt: "",
-        model: "z-image-turbo",
-        width,
-        height,
-        num_inference_steps: 9,
-      }),
-    }
-  );
+  const baseUrl = import.meta.env.VITE_API_URL || ''
+  const { PROVIDER_CONFIGS } = await import('@/lib/constants')
+  const providerConfig = PROVIDER_CONFIGS[provider]
 
-  const text = await res.text();
-  if (!text) throw new Error("Empty response from server");
+  const res = await fetch(`${baseUrl}/api/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { [providerConfig.authHeader]: token }),
+    },
+    body: JSON.stringify({
+      provider,
+      prompt,
+      model,
+      width,
+      height,
+      steps: 9,
+      ...(typeof seed === 'number' ? { seed } : {}),
+    }),
+  })
 
-  let data;
+  const text = await res.text()
+  if (!text) throw new Error('Empty response from server')
+
+  let data: { error?: string; url?: string; b64_json?: string }
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(text)
   } catch {
-    throw new Error(`Invalid response: ${text.slice(0, 100)}`);
+    throw new Error(`Invalid response: ${text.slice(0, 100)}`)
   }
 
-  if (!res.ok) throw new Error(data.error || "Failed to generate");
-  return data.url || `data:image/png;base64,${data.b64_json}`;
+  if (!res.ok) throw new Error(data.error || 'Failed to generate')
+  return data.url || `data:image/png;base64,${data.b64_json}`
 }
 
 function AIResultNode({ id, data }: NodeProps) {
-  const { prompt, width, height, aspectRatio, model, seed, imageUrl: preloadedUrl, duration: preloadedDuration, onImageGenerated, onDelete } = data as AIResultNodeData;
-  const [imageUrl, setImageUrl] = useState<string | null>(preloadedUrl || null);
-  const [loading, setLoading] = useState(!preloadedUrl);
-  const [error, setError] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(preloadedDuration || 0);
-  const [isBlurred, setIsBlurred] = useState(false);
-  const startTimeRef = useRef(Date.now());
-  const generatingRef = useRef(false);
+  const {
+    prompt,
+    width,
+    height,
+    aspectRatio,
+    model,
+    seed,
+    imageUrl: preloadedUrl,
+    duration: preloadedDuration,
+    onImageGenerated,
+    onDelete,
+  } = data as AIResultNodeData
+  const [imageUrl, setImageUrl] = useState<string | null>(preloadedUrl || null)
+  const [loading, setLoading] = useState(!preloadedUrl)
+  const [error, setError] = useState<string | null>(null)
+  const [elapsed, setElapsed] = useState(preloadedDuration || 0)
+  const [isBlurred, setIsBlurred] = useState(false)
+  const startTimeRef = useRef(0)
+  const generatingRef = useRef(false)
 
   // Timer for elapsed time
   useEffect(() => {
-    if (!loading) return;
+    if (!loading) return
     const interval = setInterval(() => {
-      setElapsed((Date.now() - startTimeRef.current) / 1000);
-    }, 100);
-    return () => clearInterval(interval);
-  }, [loading]);
+      setElapsed((Date.now() - startTimeRef.current) / 1000)
+    }, 100)
+    return () => clearInterval(interval)
+  }, [loading])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: preloadedUrl is intentionally excluded - we only want to generate once on mount
   useEffect(() => {
     // Skip generation if image is already loaded (restored node)
-    if (preloadedUrl) return;
+    if (preloadedUrl) return
 
     // Prevent double execution from React StrictMode
-    if (generatingRef.current) return;
-    generatingRef.current = true;
+    if (generatingRef.current) return
+    generatingRef.current = true
+    ;(async () => {
+      startTimeRef.current = Date.now()
+      const settings = loadSettings()
+      const provider = (settings.provider as ProviderType) ?? 'huggingface'
+      const selectedModel = settings.model || 'z-image-turbo'
 
-    decryptFromStore().then((apiKey) => {
-      if (!apiKey) {
-        setError("No API Key");
-        setLoading(false);
-        return;
+      const tokens = await loadAllTokens()
+      const token = tokens[provider]
+
+      const { PROVIDER_CONFIGS } = await import('@/lib/constants')
+      if (PROVIDER_CONFIGS[provider].requiresAuth && !token) {
+        setError('No API Token')
+        setLoading(false)
+        return
       }
-      generateImage(prompt, apiKey, width, height)
-        .then((url) => {
-          setImageUrl(url);
-          setLoading(false);
-          const duration = (Date.now() - startTimeRef.current) / 1000;
-          onImageGenerated?.(id, {
-            id,
-            url,
-            prompt,
-            aspectRatio,
-            timestamp: Date.now(),
-            model,
-            seed,
-            duration,
-            isBlurred: false,
-            isUpscaled: false,
-          });
+
+      try {
+        const url = await generateImageApi(prompt, width, height, provider, token, selectedModel, seed)
+        setImageUrl(url)
+        setLoading(false)
+        const duration = (Date.now() - startTimeRef.current) / 1000
+        onImageGenerated?.(id, {
+          id,
+          url,
+          prompt,
+          aspectRatio,
+          timestamp: Date.now(),
+          model,
+          seed,
+          duration,
+          isBlurred: false,
+          isUpscaled: false,
         })
-        .catch((err) => {
-          setError(err.message);
-          setLoading(false);
-        });
-    });
-  }, [prompt, width, height, aspectRatio, model, seed, id, onImageGenerated]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to generate')
+        setLoading(false)
+      }
+    })()
+  }, [prompt, width, height, aspectRatio, model, seed, id, onImageGenerated])
 
   const handleDownload = () => {
-    if (!imageUrl) return;
-    const a = document.createElement("a");
-    a.href = imageUrl;
-    a.download = `zenith-${Date.now()}.png`;
-    a.click();
-  };
+    if (!imageUrl) return
+    const a = document.createElement('a')
+    a.href = imageUrl
+    a.download = `zenith-${Date.now()}.png`
+    a.click()
+  }
 
   return (
     <div className="bg-zinc-900/60 backdrop-blur-md border border-zinc-700 rounded-xl p-4 min-w-[280px] shadow-2xl">
@@ -143,22 +169,26 @@ function AIResultNode({ id, data }: NodeProps) {
             <img
               src={imageUrl!}
               alt="Generated"
-              className={`w-full h-full object-cover transition-all duration-300 ${isBlurred ? "blur-xl" : ""}`}
+              className={`w-full h-full object-cover transition-all duration-300 ${isBlurred ? 'blur-xl' : ''}`}
             />
             {/* Floating Toolbar */}
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="pointer-events-auto flex items-center gap-1 p-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl transition-opacity duration-300 opacity-0 group-hover:opacity-100">
                 <button
+                  type="button"
                   onClick={() => setIsBlurred(!isBlurred)}
                   title="Toggle Blur"
                   className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${
-                    isBlurred ? "text-orange-400 bg-white/10" : "text-white/70 hover:text-white hover:bg-white/10"
+                    isBlurred
+                      ? 'text-orange-400 bg-white/10'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {isBlurred ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
                 <div className="w-px h-4 bg-white/10" />
                 <button
+                  type="button"
                   onClick={handleDownload}
                   title="Download"
                   className="flex items-center justify-center w-8 h-8 rounded-lg transition-all text-white/70 hover:text-white hover:bg-white/10"
@@ -167,6 +197,7 @@ function AIResultNode({ id, data }: NodeProps) {
                 </button>
                 <div className="w-px h-4 bg-white/10" />
                 <button
+                  type="button"
                   onClick={() => onDelete?.(id)}
                   title="Delete"
                   className="flex items-center justify-center w-8 h-8 rounded-lg transition-all text-white/70 hover:text-red-400 hover:bg-red-500/10"
@@ -187,7 +218,7 @@ function AIResultNode({ id, data }: NodeProps) {
 
       <Handle type="source" position={Position.Bottom} className="!bg-zinc-600" />
     </div>
-  );
+  )
 }
 
-export default memo(AIResultNode);
+export default memo(AIResultNode)
