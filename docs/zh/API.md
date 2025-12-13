@@ -182,19 +182,30 @@ X-MS-Token: your-modelscope-token     # ModelScope (可选)
 
 ## Providers
 
+> 完整的供应商和模型详情，请参阅 **[供应商与模型](./PROVIDERS.md)**。
+
+| Provider | 认证请求头 | 图片格式 | 模型 |
+|----------|------------|----------|------|
+| Gitee AI | `X-API-Key` | PNG | `z-image-turbo` |
+| HuggingFace | `X-HF-Token` | **WebP** | `flux-schnell`, `stable-diffusion-3.5-large` |
+| ModelScope | `X-MS-Token` | PNG | `flux-schnell` |
+
 ### Gitee AI
 - **请求头**: `X-API-Key`
 - **模型**: `z-image-turbo`
+- **图片格式**: PNG
 - **获取 API Key**: [ai.gitee.com](https://ai.gitee.com)
 
 ### HuggingFace
 - **请求头**: `X-HF-Token` (可选，无 token 有速率限制)
 - **模型**: `flux-schnell`, `stable-diffusion-3.5-large`
+- **图片格式**: WebP
 - **获取 Token**: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
 ### ModelScope
 - **请求头**: `X-MS-Token`
 - **模型**: `flux-schnell`
+- **图片格式**: PNG
 - **获取 Token**: [modelscope.cn](https://modelscope.cn)
 
 ## `POST /api/generate-hf` (旧版)

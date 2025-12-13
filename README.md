@@ -80,6 +80,42 @@ curl -X POST https://your-project.pages.dev/api/generate \
 | [Contributing](./docs/en/CONTRIBUTING.md) | Local setup, LAN access, development |
 | [Deployment](./docs/en/DEPLOYMENT.md)     | Cloudflare, Vercel, Netlify guides   |
 | [API Reference](./docs/en/API.md)         | Endpoints, parameters, code examples |
+| [Providers & Models](./docs/en/PROVIDERS.md) | All providers and model details   |
+
+## Security
+
+### How Your API Keys Are Protected
+
+```
+Browser ──HTTPS──→ Cloudflare Workers ──HTTPS──→ AI Provider (Gitee/HuggingFace)
+   ↑                      ↑
+AES-256-GCM          Proxy Layer
+encrypted            (your deployment)
+```
+
+- **Local Encryption**: API keys are encrypted with AES-256-GCM before storing in localStorage
+- **Transport Security**: All communications use HTTPS encryption
+- **Proxy Architecture**: Your keys are sent to your own Workers, not directly to AI providers
+
+### ⚠️ Third-Party Deployment Warning
+
+> **Important**: If you use someone else's deployed instance, the operator can potentially access your API keys.
+
+This is because:
+
+1. The deployment owner can add logging code to capture request headers
+2. You cannot verify what code is actually deployed (even if the repo is open source)
+3. Cloudflare provides tools like `wrangler tail` that can inspect live requests
+
+**Recommendations**:
+
+| Scenario | Risk Level | Recommendation |
+|----------|------------|----------------|
+| Self-hosted deployment | ✅ Safe | Full control over your keys |
+| Third-party instance | ⚠️ Risky | Use disposable/low-balance keys only |
+| Unknown source | ❌ Unsafe | Do not enter valuable API keys |
+
+**For maximum security, always deploy your own instance.**
 
 ## Tech Stack
 

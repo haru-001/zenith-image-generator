@@ -182,19 +182,30 @@ X-MS-Token: your-modelscope-token     # ModelScope (optional)
 
 ## Providers
 
+> For complete provider and model details, see **[Providers & Models](./PROVIDERS.md)**.
+
+| Provider | Auth Header | Image Format | Models |
+|----------|-------------|--------------|--------|
+| Gitee AI | `X-API-Key` | PNG | `z-image-turbo` |
+| HuggingFace | `X-HF-Token` | **WebP** | `flux-schnell`, `stable-diffusion-3.5-large` |
+| ModelScope | `X-MS-Token` | PNG | `flux-schnell` |
+
 ### Gitee AI
 - **Header**: `X-API-Key`
 - **Models**: `z-image-turbo`
+- **Image Format**: PNG
 - **Get API Key**: [ai.gitee.com](https://ai.gitee.com)
 
 ### HuggingFace
 - **Header**: `X-HF-Token` (optional, rate limited without token)
 - **Models**: `flux-schnell`, `stable-diffusion-3.5-large`
+- **Image Format**: WebP
 - **Get Token**: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
 ### ModelScope
 - **Header**: `X-MS-Token`
 - **Models**: `flux-schnell`
+- **Image Format**: PNG
 - **Get Token**: [modelscope.cn](https://modelscope.cn)
 
 ## `POST /api/generate-hf` (Legacy)

@@ -1,0 +1,156 @@
+# 供应商与模型
+
+本文档列出所有支持的 AI 供应商及其可用模型。
+
+## 总览
+
+| 供应商 | 需要认证 | 图片格式 | 模型数量 |
+|--------|----------|----------|----------|
+| [Gitee AI](#gitee-ai) | 是 | PNG | 5 |
+| [HuggingFace](#huggingface) | 可选 | WebP | 4 |
+| [ModelScope](#modelscope) | 是 | PNG | 4 |
+
+---
+
+## Gitee AI
+
+中国本土 AI 平台，提供高质量图片生成服务。
+
+| 字段 | 值 |
+|------|-----|
+| 认证请求头 | `X-API-Key` |
+| 需要认证 | 是 |
+| 图片格式 | PNG |
+| 获取 API Key | [ai.gitee.com](https://ai.gitee.com) |
+
+### 模型列表
+
+| 模型 ID | 显示名称 | 负面提示词 | 步数范围 | 引导比例 |
+|---------|----------|------------|----------|----------|
+| `z-image-turbo` | Z-Image Turbo | 支持 | 1-20 (默认: 9) | - |
+| `Qwen-Image` | Qwen Image | 支持 | 4-50 (默认: 20) | - |
+| `flux-1-schnell` | FLUX.1 Schnell | 不支持 | 1-50 (默认: 8) | 0-50 (默认: 7.5) |
+| `FLUX_1-Krea-dev` | FLUX.1 Krea | 不支持 | 1-50 (默认: 20) | 0-20 (默认: 4.5) |
+| `FLUX.1-dev` | FLUX.1 | 不支持 | 1-50 (默认: 20) | 0-20 (默认: 4.5) |
+
+---
+
+## HuggingFace
+
+免费的社区驱动 AI 平台，基于 Gradio Spaces。
+
+| 字段 | 值 |
+|------|-----|
+| 认证请求头 | `X-HF-Token` |
+| 需要认证 | 否 (无 token 有速率限制) |
+| 图片格式 | WebP |
+| 获取 Token | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) |
+
+### 模型列表
+
+| 模型 ID | 显示名称 | 负面提示词 | 步数范围 | 引导比例 |
+|---------|----------|------------|----------|----------|
+| `z-image-turbo` | Z-Image Turbo | 不支持 | 1-20 (默认: 9) | - |
+| `qwen-image-fast` | Qwen Image Fast | 不支持 | 4-28 (默认: 8) | - |
+| `ovis-image` | Ovis Image | 不支持 | 1-50 (默认: 24) | - |
+| `flux-1-schnell` | FLUX.1 Schnell | 不支持 | 1-50 (默认: 8) | - |
+
+### HuggingFace Spaces 地址
+
+| 模型 | Space URL |
+|------|-----------|
+| z-image-turbo | `https://mrfakename-z-image-turbo.hf.space` |
+| qwen-image-fast | `https://mcp-tools-qwen-image-fast.hf.space` |
+| ovis-image | `https://aidc-ai-ovis-image-7b.hf.space` |
+| flux-1-schnell | `https://black-forest-labs-flux-1-schnell.hf.space` |
+| upscaler (放大) | `https://tuan2308-upscaler.hf.space` |
+
+---
+
+## ModelScope
+
+阿里巴巴旗下的中国 AI 模型托管平台。
+
+| 字段 | 值 |
+|------|-----|
+| 认证请求头 | `X-MS-Token` |
+| 需要认证 | 是 |
+| 图片格式 | PNG |
+| 获取 Token | [modelscope.cn](https://modelscope.cn) |
+
+### 模型列表
+
+| 模型 ID | 显示名称 | 负面提示词 | 步数范围 | 引导比例 |
+|---------|----------|------------|----------|----------|
+| `Tongyi-MAI/Z-Image-Turbo` | Z-Image Turbo | 不支持 | 1-20 (默认: 9) | - |
+| `black-forest-labs/FLUX.2-dev` | FLUX.2 | 不支持 | 1-50 (默认: 24) | 1-10 (默认: 3.5) |
+| `black-forest-labs/FLUX.1-Krea-dev` | FLUX.1 Krea | 不支持 | 1-50 (默认: 24) | 1-20 (默认: 3.5) |
+| `MusePublic/489_ckpt_FLUX_1` | FLUX.1 | 不支持 | 1-50 (默认: 24) | 1-20 (默认: 3.5) |
+
+---
+
+## 功能对比
+
+### 负面提示词支持
+
+| 供应商 | 支持负面提示词的模型 |
+|--------|---------------------|
+| Gitee AI | `z-image-turbo`, `Qwen-Image` |
+| HuggingFace | 无 |
+| ModelScope | 无 |
+
+### 引导比例支持
+
+| 供应商 | 支持引导比例的模型 |
+|--------|-------------------|
+| Gitee AI | `flux-1-schnell`, `FLUX_1-Krea-dev`, `FLUX.1-dev` |
+| HuggingFace | 无 |
+| ModelScope | `FLUX.2-dev`, `FLUX.1-Krea-dev`, `FLUX.1` |
+
+---
+
+## 使用示例
+
+### Gitee AI + Z-Image Turbo
+
+```bash
+curl -X POST https://your-project.pages.dev/api/generate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-gitee-api-key" \
+  -d '{
+    "provider": "gitee",
+    "model": "z-image-turbo",
+    "prompt": "一只可爱的猫",
+    "negative_prompt": "低质量, 模糊",
+    "steps": 9
+  }'
+```
+
+### HuggingFace + FLUX.1 Schnell
+
+```bash
+curl -X POST https://your-project.pages.dev/api/generate \
+  -H "Content-Type: application/json" \
+  -H "X-HF-Token: your-hf-token" \
+  -d '{
+    "provider": "huggingface",
+    "model": "flux-1-schnell",
+    "prompt": "一只可爱的猫",
+    "steps": 8
+  }'
+```
+
+### ModelScope + FLUX.2
+
+```bash
+curl -X POST https://your-project.pages.dev/api/generate \
+  -H "Content-Type: application/json" \
+  -H "X-MS-Token: your-ms-token" \
+  -d '{
+    "provider": "modelscope",
+    "model": "black-forest-labs/FLUX.2-dev",
+    "prompt": "一只可爱的猫",
+    "steps": 24,
+    "guidanceScale": 3.5
+  }'
+```
