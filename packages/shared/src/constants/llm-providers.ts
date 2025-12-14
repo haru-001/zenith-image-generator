@@ -10,9 +10,10 @@ export const LLM_PROVIDER_CONFIGS: Record<LLMProviderType, LLMProviderConfig> = 
     id: 'pollinations',
     name: 'Pollinations AI',
     url: 'https://text.pollinations.ai/openai',
-    defaultModel: 'openai',
+    defaultModel: 'openai-fast',
     needsAuth: false,
     models: [
+      { id: 'openai-fast', name: 'OpenAI Fast', description: 'Fast OpenAI model' },
       { id: 'openai', name: 'OpenAI', description: 'Fast general-purpose model' },
       { id: 'mistral', name: 'Mistral', description: 'Efficient open-source model' },
       { id: 'llama', name: 'Llama', description: 'Meta open-source model' },

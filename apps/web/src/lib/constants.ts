@@ -115,7 +115,7 @@ export interface LLMSettings {
 /** Default LLM settings */
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   llmProvider: 'pollinations',
-  llmModel: 'openai',
+  llmModel: 'openai-fast',
   autoTranslate: true,
   customSystemPrompt: '',
 }
