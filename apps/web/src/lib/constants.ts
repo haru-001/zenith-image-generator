@@ -87,7 +87,6 @@ export const LLM_PROVIDER_OPTIONS: { value: LLMProviderType; label: string; need
     { value: 'huggingface-llm', label: 'HuggingFace', needsAuth: false },
     { value: 'gitee-llm', label: 'Gitee AI', needsAuth: true },
     { value: 'modelscope-llm', label: 'ModelScope', needsAuth: true },
-    { value: 'deepseek', label: 'DeepSeek', needsAuth: true },
   ]
 
 /** Get models for LLM provider */
