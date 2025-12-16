@@ -39,6 +39,7 @@ import {
   bodyLimit,
   errorHandler,
   notFoundHandler,
+  rateLimitPresets,
   requestId,
   requestLogger,
   securityHeaders,
@@ -100,6 +101,15 @@ export function createApp(config: AppConfig = {}) {
   app.use('/optimize', bodyLimit(50 * 1024))
   app.use('/translate', bodyLimit(20 * 1024)) // 20KB for translation
   app.use('/video/generate', bodyLimit(50 * 1024))
+
+  // Apply rate limiting to prevent abuse
+  app.use('/generate', rateLimitPresets.generate) // 10 req/min
+  app.use('/generate-hf', rateLimitPresets.generate) // 10 req/min
+  app.use('/upscale', rateLimitPresets.generate) // 10 req/min
+  app.use('/optimize', rateLimitPresets.optimize) // 20 req/min
+  app.use('/translate', rateLimitPresets.optimize) // 20 req/min
+  app.use('/video/generate', rateLimitPresets.video) // 5 req/min
+  app.use('/video/status/*', rateLimitPresets.readonly) // 60 req/min
 
   // Health check
   app.get('/', (c) => {
@@ -493,6 +503,9 @@ export function createApp(config: AppConfig = {}) {
   })
 
   // Image proxy endpoint (for CORS bypass when downloading external images)
+  // Max image size: 10MB
+  const MAX_PROXY_IMAGE_SIZE = 10 * 1024 * 1024
+
   app.get('/proxy-image', async (c) => {
     const url = c.req.query('url')
 
@@ -513,13 +526,26 @@ export function createApp(config: AppConfig = {}) {
         )
       }
 
-      const contentType = response.headers.get('content-type') || 'image/png'
-      const blob = await response.blob()
+      // Check content length before streaming
+      const contentLength = response.headers.get('content-length')
+      if (contentLength && Number.parseInt(contentLength, 10) > MAX_PROXY_IMAGE_SIZE) {
+        return sendError(
+          c,
+          Errors.invalidParams(
+            'url',
+            `Image too large. Maximum size: ${MAX_PROXY_IMAGE_SIZE / 1024 / 1024}MB`
+          )
+        )
+      }
 
-      return new Response(blob, {
+      const contentType = response.headers.get('content-type') || 'image/png'
+
+      // Use streaming response to avoid loading entire image into memory
+      return new Response(response.body, {
         headers: {
           'Content-Type': contentType,
           'Cache-Control': 'public, max-age=86400',
+          ...(contentLength && { 'Content-Length': contentLength }),
         },
       })
     } catch (err) {
@@ -574,6 +600,9 @@ export function createApp(config: AppConfig = {}) {
   })
 
   // Video generation - Query status
+  // Recommended polling interval in seconds
+  const VIDEO_POLL_INTERVAL = 3
+
   app.get('/video/status/:taskId', async (c) => {
     const taskId = c.req.param('taskId')
     const authToken = c.req.header('X-API-Key')
@@ -584,6 +613,12 @@ export function createApp(config: AppConfig = {}) {
 
     try {
       const result = await getVideoTaskStatus(taskId, authToken)
+
+      // Add Retry-After header for pending/processing status to guide client polling
+      if (result.status === 'pending' || result.status === 'processing') {
+        c.header('Retry-After', VIDEO_POLL_INTERVAL.toString())
+      }
+
       return c.json(result)
     } catch (err) {
       return sendError(c, err)
