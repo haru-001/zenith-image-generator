@@ -1,12 +1,12 @@
 import { Errors, getModelsByProvider, PROVIDER_CONFIGS } from '@z-image/shared'
-import type { Hono } from 'hono'
+import type { Context, Hono } from 'hono'
 import { sendError } from '../middleware'
 import { getProvider } from '../providers'
 import { convertRequest, convertResponse, parseBearerToken } from './adapter'
 import { resolveModel } from './model-resolver'
 import type { OpenAIImageRequest, OpenAIModelsListResponse } from './types'
 
-function getOrigin(c: Parameters<Parameters<Hono['post']>[1]>[0]): string {
+function getOrigin(c: Context): string {
   try {
     return new URL(c.req.url).origin
   } catch {
